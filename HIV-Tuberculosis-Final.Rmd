@@ -1,5 +1,5 @@
 ---
-title: "Assignment 2, Tuberculosis Analysis"
+title: "HIV-Tuberculosis Analysis"
 author: 'Group 44: Delavar Galehdari, Javad Honarvar, Assal Nekoufar'
 date: '2020-03-03'
 output:

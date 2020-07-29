@@ -1,0 +1,5 @@
+## 
+
+In an analysis applied to the 15 High TB/HIV Burden Countries, we reached to the conclusion that HIV coinfection is the most potent immunosuppressive risk factor for developing active TB disease. WHO Africa Region has the highest prevalence of HIV infection and had the highest incidence of TB. Studies in countries with high HIV prevalence have also shown that TB incidence and mortality rate is strongly associated with the prevalence of HIV infection. Finally, due to strong correlation between TB Incidence and TB/HIV-Positive, our primary assumption turned out to be correct.
+In principle, reducing the prevalence of the proximate risk factors such as HIV will reduce TB incidence. Thus, collaboration between TB and HIV programs and allocating sufficient budget will diminish the burden of TB among people living with HIV and the burden of HIV among TB patients. For the future work, we suggest a study could be conducted on both challenges of multi-drug resistant (MDR) TB and the intersecting epidemics of TB and HIV.
+

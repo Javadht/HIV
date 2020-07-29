@@ -1,0 +1,322 @@
+---
+title: "Assignment 2, Tuberculosis Analysis"
+author: 'Group 44: Delavar Galehdari, Javad Honarvar, Assal Nekoufar'
+date: '2020-03-03'
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.height=3, fig.width=8)
+library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(lattice)
+library(plyr)
+library(tidyverse)
+library(knitr)   
+library(pastecs)
+library(ggm)
+```
+
+
+```{r include=FALSE}
+tb.hiv <- read.csv("Assignment-Two-TB-HIV.csv")
+risk.factor <- read.csv("Assignment-Two-Risk-Factor.csv")
+budget <- read.csv("Assignment-Two-Budget.csv")
+cor.pcor <- read.csv("Assignment-Two-Cor-Pcor.csv")
+
+budget
+risk.factor
+tb.hiv
+cor.pcor
+```
+
+
+
+```{r include=FALSE}
+tb.hiv$e_inc_100k <- as.integer(tb.hiv$e_inc_100k)
+tb.hiv$e_inc_tbhiv_100k <- as.integer(tb.hiv$e_inc_tbhiv_100k)
+tb.hiv$e_mort_exc_tbhiv_100k <- as.integer(tb.hiv$e_mort_exc_tbhiv_100k)
+tb.hiv$e_mort_tbhiv_100k <- as.integer(tb.hiv$e_mort_tbhiv_100k)
+tb.hiv$e_mort_100k <- as.integer(tb.hiv$e_mort_100k)
+tb.hiv$c_newinc_100k <- as.integer(tb.hiv$c_newinc_100k)
+tb.hiv
+```
+
+## Data
+
+In this report we are going to analyze primary risk factors concerned about global health epidemics related to
+tuberculosis. As we had access to the datasets of the World Health Organization (WHO), we wisely selected desired variables from 3 datasets including; "WHO TB burden estimates", "WHO TB incidence estimates disaggregated by age, sex and risk factor", and "TB budgets for fiscal year 2018 onwards" to make a report for a healthcare business analyst working on the factors affecting the prevalance of TB cases globally. In this report we are going to conduct a study on the assumption that amongst risk factors affecting TB incidence in TB High Burden Countries(HBC), people living with HIV are more likely to develop TB than persons without.
+
+We summarize our variables of interest by manipulating the WHO datasets into three dataframes called "TB-HIV", "Risk-Factor" and "Budget" with 432, 7310, 4040 number of observations, respectively. For conducting the exploratory data analysis, we selected 22 variables namely; country, year, g_whoregion, e_pop_num, e_inc_num, e_inc_100k, e_inc_tbhiv_num, e_inc_tbhiv_100k,	e_mort_exc_tbhiv_num, e_mort_exc_tbhiv_100k,	e_mort_tbhiv_num,	e_mort_tbhiv_100k, e_mort_num, e_mort_100k,	c_newinc_100k, sex, risk_factor, best, cf_tbhiv, cf_tot, cf_tot_domestic and cf_tot_gf.
+
+```{r include=FALSE}
+summary(tb.hiv$e_pop_num)
+summary(tb.hiv$e_inc_num)
+summary(tb.hiv$e_inc_tbhiv_num)
+summary(tb.hiv$e_mort_exc_tbhiv_num)
+summary(tb.hiv$e_mort_tbhiv_num)
+summary(tb.hiv$e_mort_num)
+summary(risk.factor$best)
+summary(budget$cf_tot)
+summary(budget$cf_tot_domestic)
+summary(budget$cf_tot_gf)
+```
+
+
+
+## Planning
+
+The goal of our analysis is to examine the HIV risk factors that impair the host's defense against TB infection across TB/HIV high burden countries (HBC) across years 2000 to 2018. Firstly, we are going to consider all risk factors to limit 216 unique countries in the dataset to ones highly suffers from TB incidence and HIV as a risk factor simultaneously. Then we will look at the trends in the estimated number of incident TB cases rate, notifications of new and relapse cases, and HIV-positive TB cases through years of study in these countries. We also going to look at the trends in the estimated number of deaths caused by TB and HIV, 2000−2018. Finally, we study the TB financing in the targeting countries (TB/HIV HBC).
+
+At the end we calculate the correlation between our variables of interests; estimated TB incidence (all forms) per 100 000 populations and Estimated incidence of TB cases who are HIV-positive per 100 000 populations to validate our hypothesis. We use "Pearson" method for our correlation test as our variables are all interval data, thus, there is no need to check normality and homescedasity. In order to reach to a truer estimate of the unique relationship between our variables, we will calculate the partial correlation with estimated total population as our third variable (controler) to reach conclusion.
+
+## Analysis
+
+After learning about the objective and variables of this analysis, now the TB Incidence in different WHO regions would be visualized from 2000 to 2018.
+```{r include=FALSE}
+sum(is.na(tb.hiv$e_inc_100k)) # no NA found
+```
+
+```{r echo=FALSE}
+#scatter plot visualizing the TB incidence between 2000 and 2018
+ggplot(tb.hiv, aes(x = year, y = e_inc_100k, color = g_whoregion)) + labs(x = "Year", y = "TB Incidence") + stat_smooth() + ggtitle("TB Incidence VS Year") + theme (plot.title = element_text(hjust = 0.5)) + scale_color_discrete(name = "WHO Regions")
+```
+As can be seen in the plot, Africa (AFR) and South-East Asia (SEA) regions have significant higher TB Incidence comparing to other regions during these years; therefore, we are about to focus deeply into countries of AFR & SEA regions.
+
+```{r include=FALSE}  
+# We consider 5000 as our threshold
+#scatter plot visualizing the TB incidence between 2000 and 2018 for AFR countries
+tb.hiv.AFR <- tb.hiv %>%
+   filter(g_whoregion == "AFR")  
+table_AFR <- aggregate(tb.hiv.AFR$e_inc_100k, by=list(country=tb.hiv.AFR$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_AFR
+# ggplot(aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 7, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5000)
+tb.hiv.SEA <- tb.hiv %>%
+   filter(g_whoregion == "SEA") 
+table_SEA <- aggregate(tb.hiv.SEA$e_inc_100k, by=list(country=tb.hiv.SEA$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_SEA
+# ggplot(aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5500)
+tb.hiv.WPR <- tb.hiv %>%
+   filter(g_whoregion == "WPR") 
+table_WPR <- aggregate(tb.hiv.WPR$e_inc_100k, by=list(country=tb.hiv.WPR$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_WPR
+# ggplot(e,aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5000)
+tb.hiv.EMR <- tb.hiv %>%
+   filter(g_whoregion == "EMR") 
+table_EMR <- aggregate(tb.hiv.EMR$e_inc_100k, by=list(country=tb.hiv.EMR$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_EMR
+# ggplot(aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5000)
+tb.hiv.AMR <- tb.hiv %>%
+   filter(g_whoregion == "AMR") 
+table_AMR <- aggregate(tb.hiv.AMR$e_inc_100k, by=list(country=tb.hiv.AMR$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_AMR
+# ggplot(aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5000)
+tb.hiv.EUR <- tb.hiv %>%
+   filter(g_whoregion == "EUR") 
+table_EUR <- aggregate(tb.hiv.EUR$e_inc_100k, by=list(country=tb.hiv.EUR$country), FUN=sum) %>% 
+   filter(x>5000)
+# table_EUR
+# ggplot(aes(country, x)) + geom_bar(stat="identity") + theme(axis.text.x=element_text(angle = 90, size = 6, hjust = 1, vjust = 0.5)) + geom_hline(yintercept = 5000)
+hbc_table <- rbind(table_AFR, table_SEA, table_WPR, table_EMR, table_AMR, table_EUR)
+hbc_table
+```
+
+
+After finding 34 TB HBC in all mentioned regions by setting a threshold of 5000 for TB incidence, we now want to visualize a plot to study the estimated number of TB cases attributable to five risk factors- alcohol abuse, diabetes, HIV, smoking, undernourishment- in these countries in 2018. 
+
+```{r include=FALSE} 
+# Analysis of risk factor of TB HBC in year 2018
+risk.factor_1 <- risk.factor[risk.factor$risk_factor != "all", ]
+hbc_risk_factor_merge <- merge(hbc_table, risk.factor_1, by = "country" )
+hbc_risk_factor <- aggregate(x = hbc_risk_factor_merge$best,
+          by = list(hbc_risk_factor_merge$risk_factor, hbc_risk_factor_merge$country),
+          FUN = sum)
+names(hbc_risk_factor) <- c("risk_factor","country","best_estimate")
+hbc_risk_factor
+```
+
+
+```{r echo=FALSE} 
+ggplot(hbc_risk_factor, aes(x=risk_factor, y = log(best_estimate), fill = risk_factor)) + geom_bar(stat = "identity") + facet_wrap(~ country) + theme(strip.text.x = element_text(size = 7, angle = 0)) + theme(axis.text.x=element_text(angle = 90, size = 8, hjust = 1, vjust = 0.5)) +theme(axis.text.y=element_text(angle = 0, size = 8, hjust = 1, vjust = 0.5)) + theme(legend.position = "none") + ggtitle("Global Estimates of TB Incidence VS Risk Factors by TB HBC") + theme (plot.title = element_text(hjust = 0.5)) + labs(x = "Risk Factor", y = "TB Incidence (Millions per year)")
+```
+
+```{r include=FALSE}
+#Our desired table for studying the relation between TB cases and Sex in HBC for age plus 15 and in year 2018
+risk.factor_2 <- risk.factor[risk.factor$sex != "a", ]
+hbc_risk_table <- risk.factor_2 %>% 
+   filter(country %in% c("Angola","Botswana","Cameroon","Central African Republic","Congo","Democratic Republic of the Congo","Eswatini","Ethiopia","Gabon","Guinea-Bissau","Kenya","Lesotho","Liberia","Malawi","Mozambique","Namibia","Sierra Leone","South Africa","United Republic of Tanzania","Zambia","Zimbabwe","Democratic People's Republic of Korea","Indonesia","Myanmar","Timor-Leste","Cambodia","Kiribati","Marshall Islands","Mongolia","Papua New Guinea","Philippines","Djibouti","Pakistan","Somalia"))
+hbc_risk_table
+```
+
+```{r include=FALSE}
+bestestimate_sex_table <- aggregate(x = hbc_risk_table$best,
+          by = list(hbc_risk_table$sex),
+          FUN = sum)
+names(bestestimate_sex_table) <- c("sex","best_estimate")
+bestestimate_sex_table
+```
+
+Let's visualize TB incidence in 2018 disaggregated by sex.
+
+```{r echo=FALSE}
+#TB incidence in 2018 disaggregated by sex
+ggplot(bestestimate_sex_table, aes(x=sex, y = best_estimate/1000000, fill = sex)) + geom_bar(stat = "identity") + theme_minimal()+ ggtitle("Estimates of TB Incidence VS Sex in TB HBC") + theme (plot.title = element_text(hjust = 0.5)) + labs(x = "Sex (Female & Male)", y = "TB Incidence (Millions per year)") + scale_fill_brewer(palette="Dark2", name = "Sex", labels = c("Female","Male"))
+```
+
+As it is shown, people in both sexes are affected by TB but the highest burden is among men. They accounted for 63% of all cases in 2018, compared with 37% of cases in women.
+
+As We are looking at HIV prevalence in TB cases we now limit our HBC countries to those in which HIV as a factor, has the highest impact on TB cases.
+
+Here is the list of TB/HIV HBC (15 Countries) by looking at #"Figure"; 
+Eswatini, Gabon, Cameroon, Kenya, Lesotho, Malawi, Mozambique, South Africa, United Republic of Tanzania, Zambia, Zimbabwe, Botswana, Congo, Guinea-Bissau, Namibia.
+
+Let's find our desired data for TB/HIV countries to study the effect of HIV.
+```{r include=FALSE}
+#Filter the TB/HIV HBC
+hbc_hiv_table <- tb.hiv %>% 
+   filter(country %in% c("Eswatini","Gabon","Cameroon","Kenya","Lesotho","Malawi","Mozambique","South Africa","Zambia","United Republic of Tanzania","Zimbabwe","Botswana","Congo","Guinea-Bissau","Namibia"))
+hbc_hiv_table 
+```
+
+Here our assumption is that due to the improvements in access to TB diagnosis and new treatment and vaccine which lower the risk of developing TB in people who already have a latent TB infection and HIV, the TB cases reduce over 2000-2018.
+
+```{r include=FALSE}
+#Our desired table for studying the relation between all TB cases HIV positive, and notifications of new and relapse cases
+TB_NF_HIV_POS <- tb.hiv %>% 
+   filter(country %in% c("Eswatini","Gabon","Cameroon","Kenya","Lesotho","Malawi","Mozambique","South Africa","Zambia","United Republic of Tanzania","Zimbabwe","Botswana","Congo","Guinea-Bissau","Namibia"))
+keep_col <- c("country","year","e_inc_100k","e_inc_tbhiv_100k","c_newinc_100k")
+TB_NF_HIV_POS <- TB_NF_HIV_POS [,keep_col]
+TB_NF_HIV_POS
+```
+
+
+```{r echo=FALSE}
+#plotting trends in estimated TB incidence in the 15 TB/HIV HBC, 2000-2018
+ggplot(TB_NF_HIV_POS,aes(x=year)) + stat_smooth(aes(y=e_inc_100k, color="e_inc_100k")) + stat_smooth(aes(y=e_inc_tbhiv_100k, color="e_inc_tbhiv_100k")) + stat_smooth(aes(y=c_newinc_100k, color="c_newinc_100k")) +facet_wrap(~ country,scales = "fixed") + theme(strip.text.x = element_text(size = 9, angle = 0)) + theme(axis.text.x=element_text(angle = 90, size = 7, hjust = 1, vjust = 0.5)) +theme(axis.text.y=element_text(angle = 0, size = 8, hjust = 1, vjust = 0.5)) + theme(legend.position = c(0.9, 0), legend.direction = "vertical", legend.key.size = unit(0.5, "cm"),
+  legend.key.width = unit(0.5,"cm")) + scale_color_discrete(name = "Colour", labels = c("Notifications Cases","TB Incidence Cases","HIV Positive Cases")) + ggtitle("Estimated TB incidence VS HIV-positive TB cases VS Notifications of new and relapse cases") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "Year", y = "Rate per 100K population per year")
+```
+
+Consistent with our assumption, the number of incident cases is falling slowly, in both absolute terms and per capita. Since 2006- a peak in the HIV epidemic and the expansion of TB cases- there were annual declines in TB incidence rate; however, the fastest decline until 2018 has been in the “Namibia”, “Eswatini” ,”Lesotho”, and “South Africa” with impressive reduction of 45%, 66%, 48%, and 35%, respectively.
+
+It is also interesting to note that in all these countries  the number of TB cases and the notification of new and relapse cases are converging that maybe due to the End TB Strategy implemented by WHO.
+
+```{r include=FALSE}
+#Regional trends in estimated TB mortality rates by WHO region, 2000−2018 for HBC
+TB_HBC <- tb.hiv %>% 
+   filter(country %in% c("Angola","Botswana","Cameroon","Central African Republic","Congo","Democratic Republic of the Congo","Eswatini","Ethiopia","Gabon","Guinea-Bissau","Kenya","Lesotho","Liberia","Malawi","Mozambique","Namibia","Sierra Leone","South Africa","United Republic of Tanzania","Zambia","Zimbabwe","Democratic People's Republic of Korea","Indonesia","Myanmar","Timor-Leste","Cambodia","Kiribati","Marshall Islands","Mongolia","Papua New Guinea","Philippines","Djibouti","Pakistan","Somalia"))
+keep_col <- c("country","year","g_whoregion","e_mort_exc_tbhiv_100k","e_mort_tbhiv_100k")
+TB_HBC <- TB_HBC [,keep_col]
+TB_HBC
+```
+
+Regional trends of TB HBC in the mortality rate (deaths per 100 000 population per year) in HIV-negative and HIV-positive people is downward sloping. The fastest regional declines in TB deaths since 2000 have been in the WHO African Region (about 8% per year among HIV-positive people), and in the WHO South-East Asia Region (about 5% per year among HIV-negative people).
+
+```{r echo=FALSE}
+#plotting trends in estimated TB mortality rates in the 34 TB HBC, 2000-2018
+ggplot(TB_HBC,aes(x=year)) + stat_smooth(aes(y=e_mort_exc_tbhiv_100k, color="e_mort_exc_tbhiv_100k")) + stat_smooth(aes(y=e_mort_tbhiv_100k, color="e_mort_tbhiv_100k")) + facet_wrap(~ g_whoregion) + theme(strip.text.x = element_text(size = 9, angle = 0)) + theme(axis.text.x=element_text(angle = 90, size = 7, hjust = 1, vjust = 0.5)) +theme(axis.text.y=element_text(angle = 0, size = 8, hjust = 1, vjust = 0.5)) + scale_color_discrete(name = "Colour", labels = c("HIV-Negative","HIV-Positive")) + ggtitle("Estimated Number of Deaths Caused by TB and HIV") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "Year", y = "Mortality rate per 100K population per year")
+```
+
+```{r include=FALSE}
+#Regional trends in estimated TB mortality rates by WHO region, 2000−2018 for TB/HIV
+TB_HIV <- tb.hiv %>% 
+   filter(country %in% c("Eswatini","Gabon","Cameroon","Kenya","Lesotho","Malawi","Mozambique","South Africa","Zambia","United Republic of Tanzania","Zimbabwe","Botswana","Congo","Guinea-Bissau","Namibia"))
+keep_col <- c("country","year","g_whoregion","e_mort_exc_tbhiv_100k","e_mort_tbhiv_100k")
+TB_HIV <- TB_HIV [,keep_col]
+TB_HIV
+```
+
+```{r echo=FALSE}
+#plotting trends in Estimated Number of Deaths Caused by TB and HIV, 2000-2018") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "Year", y = "Mortality rate per 100K population per year
+ggplot(TB_HIV,aes(x=year)) + stat_smooth(aes(y=e_mort_exc_tbhiv_100k, color="e_mort_exc_tbhiv_100k")) + stat_smooth(aes(y=e_mort_tbhiv_100k, color="e_mort_tbhiv_100k")) + facet_wrap(~ country,scales = "free_y") + theme(strip.text.x = element_text(size = 7, angle = 0)) + theme(axis.text.x=element_text(angle = 90, size = 7, hjust = 1, vjust = 0.5)) +theme(axis.text.y=element_text(angle = 0, size = 7, hjust = 1, vjust = 0.5)) + scale_color_discrete(name = "Colour", labels = c("HIV-Negative","HIV-Positive")) + ggtitle("Estimated Number of Deaths Caused by TB and HIV") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "Year", y = "Mortality rate per 100K population per year") + theme(legend.position = c(0.8, 0), legend.direction = "vertical", legend.key.size = unit(0.3, "cm"),legend.key.width = unit(0.3,"cm"))
+  
+```
+
+As demonstrated since 2000 there is major annual decline in TB mortality rate among high TB/HIV burden countries among people with positive HIV. Among these 15 countries those on track to reduce the effect of HIV as a risk factor include Congo, Gabon, Guinea-Bissau, Kenya, Lesotho, Mozambique, Namibia, Malawi, Botswana, Eswatini, Cameron, Mozambique and the United Republic of Tanzania. In the aforementioned countries in 2018 the mortality rate among people with negative HIV is higher than those with positive HIV.
+
+```{r include=FALSE}
+#Our desired table for studying the relation between the TB death rate and total budget funded in 2018
+TB_BUDGET <- budget %>% 
+   filter(country %in% c("Eswatini","Gabon","Cameroon","Kenya","Lesotho","Malawi","Mozambique","South Africa","Zambia","United Republic of Tanzania","Zimbabwe","Botswana","Congo","Guinea-Bissau","Namibia"))
+keep_col <- c("country","cf_tbhiv","cf_tot","cf_tot_domestic","cf_tot_gf")
+TB_BUDGET
+TB_BUDGET <- TB_BUDGET[,keep_col]
+
+#Removing missing values from budget dataset just for 2018
+no_missing_budget <- na.omit(TB_BUDGET)
+no_missing_budget
+```
+
+
+Now we tend to compare the funding result for HIV in seven TB/HIV countries with their mortality rate. As our data lack some missing values we just omit them.
+
+```{r echo=FALSE}
+#Total Budget for 2018
+keep_col <- c("country","cf_tbhiv","cf_tot_domestic","cf_tot_gf")
+no_missing_budget <- no_missing_budget [,keep_col]
+v <- c(no_missing_budget$cf_tbhiv,no_missing_budget$cf_tot_domestic,no_missing_budget$cf_tot_gf)
+no_missing_budget %>%
+  gather("v", "cf_tbhiv",-country) %>%
+  ggplot(aes(country, log(cf_tbhiv), fill = v)) +
+  geom_col(position = "dodge") +
+  theme_bw() + theme(strip.text.x = element_text(size = 8, angle = 0)) + theme(axis.text.x=element_text(angle = 0, size = 8, hjust = 0, vjust = 0.4)) +theme(axis.text.y=element_text(angle = 0, size = 7, hjust = 1, vjust = 0.5)) +
+scale_fill_discrete(name = "Funding Types", labels = c("TB HIV International ","Domestic","TB HIV Malaria Global")) + ggtitle("Total Budget based on different Funding Sources") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "Country", y = "Total Funding (US$ millions)")
+   # theme(legend.position = c(0.8, 0), legend.direction = "horizontal", legend.key.size = unit(0.3, "cm"),legend.key.width = unit(0.3,"cm"))
+  # facet_wrap(~country,scales = "free_x")
+```
+
+Here we have two main funding sources for treating the people suffer from both TB and HIV, one is allocated to TB/HIV treatment and the other one is for both TB/HIV and Malaria. The plot is consistent with evidence from the Fig(…), that countries such as United Republic of Tanzania, Botswana, Malawi, and Cameroon with the lower rate of mortality among people with positive HIV in 2018 than that of negative HIV, are funded more budget for HIV diagnosis in 2018.
+
+Testing correlation between Estimated incidence (all forms) per 100 000 population and Estimated incidence of TB cases who are HIV-positive per 100 000 population using "Pearson" method. We checked the assumption for the Pearson test which is all our variables of interests are interval data. 
+
+```{r include=FALSE}
+#Testing correlation between Estimated incidence (all forms) per 100 000 population and Estimated incidence of TB cases who are HIV-positive per 100 000 population using Pearson method
+correlation <- cor.pcor %>% 
+   filter(country %in% c("Angola","Botswana","Cameroon","Central African Republic","Congo","Democratic Republic of the Congo","Eswatini","Ethiopia","Gabon","Guinea-Bissau","Kenya","Lesotho","Liberia","Malawi","Mozambique","Namibia","Sierra Leone","South Africa","United Republic of Tanzania","Zambia","Zimbabwe","Democratic People's Republic of Korea","Indonesia","Myanmar","Timor-Leste","Cambodia","Kiribati","Marshall Islands","Mongolia","Papua New Guinea","Philippines","Djibouti","Pakistan","Somalia"))
+correlation <- na.omit(correlation)
+
+cor(correlation$e_inc_100k, correlation$e_inc_tbhiv_100k, method = "pearson")
+cor.test(correlation$e_inc_100k, correlation$e_inc_tbhiv_100k, method = "pearson")
+```
+
+```{r echo=FALSE}
+ggplot(correlation, aes(x=e_inc_tbhiv_100k, y=e_inc_100k)) + geom_point(color = " dark orange") + ggtitle("Correlation of Estimated incidence (all forms) vs Estimated incidence of TB HIV-positive per 100K population") + geom_smooth(method=lm, se=FALSE, color= "dark blue") + theme_bw() + ggtitle("Correlation of Estimated incidence (all forms) vs Estimated incidence of TB/HIV-positive per 100K population") + theme (plot.title = element_text(hjust = 0.5, size = 11)) +  labs(x = "TB/HIV-Positive", y = "TB Incidence(All forms)")
+```
+As can be seen above, TB incidence was significantly correlated with TB/HIV-positive, r = 0.860068 (95% CI 0.8381030 to 0.8792487) and as the value of our correlation coefficint is greater than 0.5, we can conclude that A correlation of 0.86 represents a very large effect explaining 73.96% of the variance. Moreover, as the value of p-value is negligible and smaller than alpha = 0.05 (2.2e-16 < 0.05), we can statistically conclude that our null hypothesis which is "correlation is equal to zero" is rejected, therefore, there is a correlation between our aforementioned variables.
+
+Next, In order to reach to a truer estimate of the unique relationship between TB incidence and TB/HIV-positive, we will calculate the partial correlation with estimated total population as our third variable (controler) to consider some of the variance sharing by all three variables.
+
+```{r include=FALSE}
+#Testing partial correlation between Estimated incidence (all forms), Estimated incidence of TB cases who are HIV-positive, and estimated total population number as a controller 
+
+partial_corrlation <- correlation %>% 
+   select("e_inc_num","e_inc_tbhiv_num","e_pop_num");
+pc <- pcor(c("e_inc_num","e_inc_tbhiv_num","e_pop_num"), var(partial_corrlation))
+pc
+pcor.test(pc, 3, 621)
+```
+
+By looking at our partial correlation test, it can be seen that there is a significant relationship between TB Estimated incidence and TB/HIV-Positive (r=0.6537934,p= 1.253485e-76) when controlling for the effect of estimated total population.Additionally, the variance that is shared is 0.4274, or 42.74%.
+Again, as our p-value is smaller than 0.05, we can reject our null hypothesis and by considering these three variables, the correlation is not equal to zero.
+It can be also mentioned that partial correlation value (r=0.6537934) is less than the full correlation (r = 0.860068), which explained 73.96%% of the variance, when estimated total population was not controlled for. We thus conclude that TB Incidence and TB/HIV-Positive have a significant correlation, but that there is also a complex relationship between those three variables.
+
+## Conclusion
+
+In an analysis applied to the 15 High TB/HIV Burden Countries, we reached to the conclusion that HIV coinfection is the most potent immunosuppressive risk factor for developing active TB disease. WHO Africa Region has the highest prevalence of HIV infection and had the highest incidence of TB. Studies in countries with high HIV prevalence have also shown that TB incidence and mortality rate is strongly associated with the prevalence of HIV infection. Finally, due to strong correlation between TB Incidence and TB/HIV-Positive, our primary assumption turned out to be correct.
+In principle, reducing the prevalence of the proximate risk factors such as HIV will reduce TB incidence. Thus, collaboration between TB and HIV programs and allocating sufficient budget will diminish the burden of TB among people living with HIV and the burden of HIV among TB patients. For the future work, we suggest a study could be conducted on both challenges of multi-drug resistant (MDR) TB and the intersecting epidemics of TB and HIV.
+
+
+## Appendix
+www.sciencedirect.com
+www.stoptb.org
+www.who.int
+
